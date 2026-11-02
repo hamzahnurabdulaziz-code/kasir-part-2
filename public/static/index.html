@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasir Tunai Nusantara - Static Web App (LocalStorage)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-receipt, #printable-receipt * {
+                visibility: visible;
+            }
+            #printable-receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm;
+                margin: 0;
+                padding: 10px;
+                background: white;
+                color: black;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col text-slate-800 antialiased font-sans" x-data="kasirApp()" x-init="initData()">
+    <!-- Navbar -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shadow-inner border border-white/20">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg tracking-tight flex items-center gap-2">
+                            <span>Kasir Nusantara</span>
+                            <span class="text-xs bg-emerald-500/80 text-white font-medium px-2 py-0.5 rounded-full border border-emerald-400/40">Vercel Static</span>
+                        </div>
+                        <p class="text-xs text-indigo-200 hidden sm:block">Sistem Kasir & Stok Tunai (LocalStorage)</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex items-center gap-1 sm:gap-2">
+                    <button @click="currentTab = 'pos'" 
+                            :class="currentTab === 'pos' ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Kasir (POS)</span>
+                    </button>
+
+                    <button @click="currentTab = 'dashboard'" 
+                            :class="currentTab === 'dashboard' ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                        </svg>
+                        <span>Dashboard</span>
+                    </button>
+
+                    <button @click="currentTab = 'products'" 
+                            :class="currentTab === 'products' ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                        <span>Produk</span>
+                    </button>
+
+                    <button @click="currentTab = 'history'" 
+                            :class="currentTab === 'history' ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'"
+                            class="px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>Riwayat</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Flash Alert -->
+        <template x-if="alertMessage">
+            <div :class="alertType === 'error' ? 'bg-rose-50 border-rose-500 text-rose-800' : 'bg-emerald-50 border-emerald-500 text-emerald-800'"
+                 class="border-l-4 p-4 rounded-xl flex items-center justify-between shadow-sm mb-5 transition-all">
+                <span class="text-sm font-semibold" x-text="alertMessage"></span>
+                <button @click="alertMessage = ''" class="opacity-60 hover:opacity-100 text-sm font-bold">&times;</button>
+            </div>
+        </template>
+
+        <!-- TAB 1: KASIR (POS) -->
+        <section x-show="currentTab === 'pos'" class="space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left: Catalog (7 cols) -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                        <div class="relative w-full sm:w-72">
+                            <input type="text" x-model="posSearch" placeholder="Cari nama atau kode produk..." 
+                                   class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button @click="posStockFilter = 'all'" :class="posStockFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold">Semua</button>
+                            <button @click="posStockFilter = 'available'" :class="posStockFilter === 'available' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold">Tersedia</button>
+                            <button @click="posStockFilter = 'low'" :class="posStockFilter === 'low' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-semibold">Stok Menipis</button>
+                        </div>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <template x-for="p in filteredPosProducts" :key="p.id">
+                            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col justify-between hover:border-indigo-400 transition-all">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="font-mono text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded" x-text="p.code"></span>
+                                        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full" 
+                                              :class="p.stock === 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : (p.stock <= 5 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200')"
+                                              x-text="p.stock === 0 ? 'Habis' : (p.stock <= 5 ? 'Sisa ' + p.stock : 'Stok ' + p.stock)"></span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-slate-800 line-clamp-2" x-text="p.name"></h3>
+                                </div>
+                                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                    <span class="text-sm font-extrabold text-indigo-700" x-text="formatRupiah(p.price)"></span>
+                                    <button @click="addToCart(p)" :disabled="p.stock <= 0" 
+                                            :class="p.stock > 0 ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'"
+                                            class="p-2 rounded-xl transition-all shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Right: Cart & Payment (5 cols) -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <div class="flex items-center gap-2">
+                                <h2 class="font-bold text-sm text-slate-800">Keranjang Belanja</h2>
+                                <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold" x-text="cart.length"></span>
+                            </div>
+                            <button x-show="cart.length > 0" @click="clearCart()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold">Kosongkan</button>
+                        </div>
+
+                        <!-- Items in cart -->
+                        <div class="max-h-72 overflow-y-auto divide-y divide-slate-100 p-2">
+                            <template x-for="(item, idx) in cart" :key="item.id">
+                                <div class="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/80 rounded-xl">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-slate-800 truncate" x-text="item.name"></p>
+                                        <p class="text-[11px] text-slate-500" x-text="formatRupiah(item.price) + ' × ' + item.quantity"></p>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <button @click="decrementCart(idx)" class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs">-</button>
+                                        <span class="w-8 text-center text-xs font-bold" x-text="item.quantity"></span>
+                                        <button @click="incrementCart(idx)" class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs">+</button>
+                                    </div>
+                                    <div class="text-right w-24">
+                                        <p class="text-xs font-extrabold text-slate-800" x-text="formatRupiah(item.price * item.quantity)"></p>
+                                        <button @click="removeFromCart(idx)" class="text-[11px] text-rose-500 hover:text-rose-700 font-medium">Hapus</button>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="cart.length === 0">
+                                <div class="py-10 text-center text-xs text-slate-400">Keranjang belanja masih kosong</div>
+                            </template>
+                        </div>
+
+                        <!-- Subtotal -->
+                        <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                            <span class="text-sm font-semibold text-slate-600">Total Tagihan</span>
+                            <span class="text-xl font-black text-indigo-700" x-text="formatRupiah(cartSubtotal)"></span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Box -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                        <h2 class="font-bold text-sm text-slate-800">Pembayaran Tunai</h2>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal Uang Diterima (Rp)</label>
+                            <input type="number" x-model.number="paidAmount" placeholder="0" 
+                                   class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+
+                        <!-- Quick buttons -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <button @click="paidAmount = cartSubtotal" class="px-2 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200">Uang Pas</button>
+                            <button @click="paidAmount = 10000" class="px-2 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200">10.000</button>
+                            <button @click="paidAmount = 20000" class="px-2 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200">20.000</button>
+                            <button @click="paidAmount = 50000" class="px-2 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200">50.000</button>
+                            <button @click="paidAmount = 100000" class="px-2 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200">100.000</button>
+                            <button @click="paidAmount = 200000" class="px-2 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200">200.000</button>
+                        </div>
+
+                        <!-- Kembalian -->
+                        <div class="p-3.5 rounded-xl border" :class="paidAmount >= cartSubtotal && cartSubtotal > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-600'">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold">Kembalian</span>
+                                <span class="text-base font-extrabold" x-text="formatRupiah(Math.max(0, paidAmount - cartSubtotal))"></span>
+                            </div>
+                            <template x-if="paidAmount > 0 && paidAmount < cartSubtotal">
+                                <p class="text-xs text-rose-600 font-semibold mt-1">Uang tunai kurang <span x-text="formatRupiah(cartSubtotal - paidAmount)"></span></p>
+                            </template>
+                        </div>
+
+                        <button @click="processPayment()" :disabled="cart.length === 0 || paidAmount < cartSubtotal || cartSubtotal <= 0"
+                                class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-extrabold text-sm rounded-xl shadow transition-all">
+                            Simpan & Bayar Transaksi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: DASHBOARD -->
+        <section x-show="currentTab === 'dashboard'" class="space-y-6">
+            <div class="bg-gradient-to-r from-indigo-700 to-purple-600 rounded-2xl p-6 text-white shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold">Ringkasan Penjualan Hari Ini</h1>
+                    <p class="text-sm text-indigo-100 mt-1">Status stok toko dan total pendapatan kasir tunai</p>
+                </div>
+                <button @click="currentTab = 'pos'" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 font-bold text-sm rounded-xl shadow">Buka Kasir (POS)</button>
+            </div>
+
+            <!-- 4 Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Penjualan Hari Ini</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" x-text="formatRupiah(dashboardMetrics.todaySales)"></h3>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Transaksi Hari Ini</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" x-text="dashboardMetrics.todayCount"></h3>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Total Produk</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" x-text="products.length"></h3>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Stok Menipis (≤ 5)</p>
+                    <h3 class="text-2xl font-bold text-amber-600 mt-1" x-text="dashboardMetrics.lowStockCount"></h3>
+                </div>
+            </div>
+
+            <!-- Low stock alert list -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <h3 class="font-bold text-base text-slate-800 mb-3">Peringatan Stok Menipis</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b text-xs text-slate-400 uppercase">
+                                <th class="pb-2">Kode</th>
+                                <th class="pb-2">Nama</th>
+                                <th class="pb-2">Harga</th>
+                                <th class="pb-2 text-center">Sisa Stok</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="p in lowStockProducts" :key="p.id">
+                                <tr>
+                                    <td class="py-2.5 font-mono font-bold text-xs text-indigo-700" x-text="p.code"></td>
+                                    <td class="py-2.5 font-semibold text-slate-800" x-text="p.name"></td>
+                                    <td class="py-2.5 font-bold" x-text="formatRupiah(p.price)"></td>
+                                    <td class="py-2.5 text-center">
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="p.stock === 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'" x-text="p.stock + ' item'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="lowStockProducts.length === 0">
+                                <tr><td colspan="4" class="py-6 text-center text-slate-400">Semua stok produk dalam kondisi aman!</td></tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: PRODUK -->
+        <section x-show="currentTab === 'products'" class="space-y-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">Katalog & Inventori Produk</h1>
+                    <p class="text-xs text-slate-500">Kelola master data produk, harga jual, dan stok barang</p>
+                </div>
+                <button @click="openProductModal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow">Tambah Produk Baru</button>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 border-b text-xs text-slate-500 uppercase">
+                        <tr>
+                            <th class="px-5 py-3.5">Kode</th>
+                            <th class="px-5 py-3.5">Nama</th>
+                            <th class="px-5 py-3.5">Harga</th>
+                            <th class="px-5 py-3.5 text-center">Stok</th>
+                            <th class="px-5 py-3.5 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <template x-for="p in products" :key="p.id">
+                            <tr class="hover:bg-slate-50/70">
+                                <td class="px-5 py-4 font-mono font-bold text-xs text-indigo-700" x-text="p.code"></td>
+                                <td class="px-5 py-4 font-semibold text-slate-800" x-text="p.name"></td>
+                                <td class="px-5 py-4 font-bold" x-text="formatRupiah(p.price)"></td>
+                                <td class="px-5 py-4 text-center font-bold" x-text="p.stock"></td>
+                                <td class="px-5 py-4 text-right space-x-2">
+                                    <button @click="openProductModal(p)" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold">Edit</button>
+                                    <button @click="deleteProduct(p.id)" class="text-xs text-rose-600 hover:text-rose-800 font-bold">Hapus</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 4: RIWAYAT TRANSAKSI -->
+        <section x-show="currentTab === 'history'" class="space-y-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <h1 class="text-xl font-bold text-slate-800">Riwayat Penjualan</h1>
+                <p class="text-xs text-slate-500">Daftar rekaman transaksi, rincian pembayaran, dan cetak ulang struk</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 border-b text-xs text-slate-500 uppercase">
+                        <tr>
+                            <th class="px-5 py-3.5">Invoice</th>
+                            <th class="px-5 py-3.5">Waktu</th>
+                            <th class="px-5 py-3.5">Total Belanja</th>
+                            <th class="px-5 py-3.5">Bayar / Kembali</th>
+                            <th class="px-5 py-3.5 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <template x-for="txn in transactions" :key="txn.id">
+                            <tr class="hover:bg-slate-50/70">
+                                <td class="px-5 py-4 font-mono font-bold text-xs text-indigo-700" x-text="txn.invoice_no"></td>
+                                <td class="px-5 py-4 text-xs text-slate-600" x-text="formatDate(txn.transaction_date)"></td>
+                                <td class="px-5 py-4 font-extrabold text-sm text-slate-800" x-text="formatRupiah(txn.subtotal)"></td>
+                                <td class="px-5 py-4 text-xs">
+                                    <span class="text-slate-600" x-text="'Bayar: ' + formatRupiah(txn.paid_amount)"></span><br>
+                                    <span class="text-emerald-700 font-bold" x-text="'Kembali: ' + formatRupiah(txn.change_amount)"></span>
+                                </td>
+                                <td class="px-5 py-4 text-right space-x-2">
+                                    <button @click="showReceipt(txn)" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold">Struk</button>
+                                    <button @click="deleteTransaction(txn.id)" class="text-xs text-rose-600 hover:text-rose-800 font-bold">Hapus</button>
+                                </td>
+                            </tr>
+                        </template>
+                        <template x-if="transactions.length === 0">
+                            <tr><td colspan="5" class="py-10 text-center text-slate-400">Belum ada riwayat transaksi</td></tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Form Produk -->
+    <template x-if="showProductModal">
+        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+                <h3 class="font-bold text-base text-slate-800" x-text="editingProductId ? 'Ubah Produk' : 'Tambah Produk Baru'"></h3>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Kode Produk *</label>
+                    <input type="text" x-model="productForm.code" class="w-full px-3 py-2 border rounded-xl text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Nama Produk *</label>
+                    <input type="text" x-model="productForm.name" class="w-full px-3 py-2 border rounded-xl text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Harga Jual (Rp) *</label>
+                        <input type="number" x-model.number="productForm.price" min="0" class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Stok *</label>
+                        <input type="number" x-model.number="productForm.stock" min="0" class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
+                    </div>
+                </div>
+                <div class="pt-3 flex justify-end gap-2">
+                    <button @click="showProductModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600">Batal</button>
+                    <button @click="saveProduct()" class="px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Modal Struk Thermal -->
+    <template x-if="activeReceipt">
+        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+                <div id="printable-receipt" class="font-mono text-xs space-y-3">
+                    <div class="text-center border-b border-dashed pb-3">
+                        <h2 class="text-base font-black uppercase">KASIR NUSANTARA</h2>
+                        <p class="text-[11px] text-slate-500">Jl. Nusantara No. 1, Indonesia</p>
+                        <p class="text-[11px] text-slate-500">Telp: 0812-3456-7890</p>
+                    </div>
+                    <div class="border-b border-dashed pb-2 text-[11px] space-y-1">
+                        <div class="flex justify-between">
+                            <span>Invoice:</span>
+                            <span class="font-bold" x-text="activeReceipt.invoice_no"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Waktu:</span>
+                            <span x-text="formatDate(activeReceipt.transaction_date)"></span>
+                        </div>
+                    </div>
+                    <div class="border-b border-dashed pb-3 text-[11px] space-y-1">
+                        <template x-for="item in activeReceipt.items" :key="item.product_name">
+                            <div>
+                                <p class="font-bold" x-text="item.product_name"></p>
+                                <div class="flex justify-between text-slate-600">
+                                    <span x-text="item.quantity + ' × ' + formatRupiah(item.price)"></span>
+                                    <span class="font-semibold" x-text="formatRupiah(item.line_total)"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="border-b border-dashed pb-2 text-[11px] space-y-1">
+                        <div class="flex justify-between font-bold text-sm">
+                            <span>TOTAL:</span>
+                            <span x-text="formatRupiah(activeReceipt.subtotal)"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Bayar:</span>
+                            <span x-text="formatRupiah(activeReceipt.paid_amount)"></span>
+                        </div>
+                        <div class="flex justify-between font-semibold">
+                            <span>Kembalian:</span>
+                            <span x-text="formatRupiah(activeReceipt.change_amount)"></span>
+                        </div>
+                    </div>
+                    <div class="text-center text-[10px] text-slate-400 pt-1">
+                        <p>Terima kasih atas kunjungan Anda!</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button onclick="window.print()" class="flex-1 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl">Cetak Struk</button>
+                    <button @click="activeReceipt = null" class="flex-1 py-2 bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        function kasirApp() {
+            return {
+                currentTab: 'pos',
+                products: [],
+                transactions: [],
+                cart: [],
+                paidAmount: '',
+                posSearch: '',
+                posStockFilter: 'all',
+                alertMessage: '',
+                alertType: 'success',
+                showProductModal: false,
+                editingProductId: null,
+                productForm: { code: '', name: '', price: 0, stock: 0 },
+                activeReceipt: null,
+
+                initData() {
+                    const localProducts = localStorage.getItem('kasir_products');
+                    if (localProducts) {
+                        this.products = JSON.parse(localProducts);
+                    } else {
+                        // Initial dummy data
+                        this.products = [
+                            { id: 1, code: 'BRG-001', name: 'Beras Pandan Wangi 5kg', price: 75000, stock: 20 },
+                            { id: 2, code: 'BRG-002', name: 'Minyak Goreng Sania 2L', price: 38000, stock: 15 },
+                            { id: 3, code: 'BRG-003', name: 'Gula Pasir Gulaku 1kg', price: 17500, stock: 3 },
+                            { id: 4, code: 'BRG-004', name: 'Indomie Goreng Spesial', price: 3500, stock: 80 },
+                            { id: 5, code: 'BRG-005', name: 'Telur Ayam Negeri 1kg', price: 28000, stock: 4 },
+                            { id: 6, code: 'BRG-006', name: 'Kopi Kapal Api Special 165g', price: 14000, stock: 25 },
+                            { id: 7, code: 'BRG-007', name: 'Susu UHT Ultra Milk 1L', price: 21000, stock: 12 },
+                            { id: 8, code: 'BRG-008', name: 'Teh Celup Sosro Isi 30', price: 8500, stock: 30 },
+                            { id: 9, code: 'BRG-009', name: 'Sabun Mandi Lifebuoy 110g', price: 5000, stock: 0 },
+                            { id: 10, code: 'BRG-010', name: 'Air Mineral Le Minerale 600ml', price: 3500, stock: 45 },
+                        ];
+                        this.saveProductsToStorage();
+                    }
+
+                    const localTxn = localStorage.getItem('kasir_transactions');
+                    if (localTxn) {
+                        this.transactions = JSON.parse(localTxn);
+                    }
+                },
+
+                saveProductsToStorage() {
+                    localStorage.setItem('kasir_products', JSON.stringify(this.products));
+                },
+
+                saveTransactionsToStorage() {
+                    localStorage.setItem('kasir_transactions', JSON.stringify(this.transactions));
+                },
+
+                formatRupiah(num) {
+                    return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
+                },
+
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('id-ID') + ' ' + d.toLocaleTimeString('id-ID');
+                },
+
+                get filteredPosProducts() {
+                    return this.products.filter(p => {
+                        const matchSearch = p.name.toLowerCase().includes(this.posSearch.toLowerCase()) || 
+                                            p.code.toLowerCase().includes(this.posSearch.toLowerCase());
+                        if (!matchSearch) return false;
+                        if (this.posStockFilter === 'available') return p.stock > 0;
+                        if (this.posStockFilter === 'low') return p.stock <= 5 && p.stock > 0;
+                        return true;
+                    });
+                },
+
+                get cartSubtotal() {
+                    return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                },
+
+                get lowStockProducts() {
+                    return this.products.filter(p => p.stock <= 5);
+                },
+
+                get dashboardMetrics() {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const todayTxns = this.transactions.filter(t => t.transaction_date && t.transaction_date.startsWith(todayStr));
+                    const todaySales = todayTxns.reduce((sum, t) => sum + Number(t.subtotal || 0), 0);
+                    return {
+                        todaySales,
+                        todayCount: todayTxns.length,
+                        lowStockCount: this.lowStockProducts.length
+                    };
+                },
+
+                addToCart(product) {
+                    if (product.stock <= 0) {
+                        this.showAlert("Stok untuk produk '" + product.name + "' sudah habis!", 'error');
+                        return;
+                    }
+                    const item = this.cart.find(c => c.id === product.id);
+                    if (item) {
+                        if (item.quantity + 1 > product.stock) {
+                            this.showAlert("Jumlah melebihi batas stok tersedia (" + product.stock + " item)!", 'error');
+                            return;
+                        }
+                        item.quantity++;
+                    } else {
+                        this.cart.push({
+                            id: product.id,
+                            code: product.code,
+                            name: product.name,
+                            price: product.price,
+                            quantity: 1,
+                            maxStock: product.stock
+                        });
+                    }
+                    this.showAlert("'" + product.name + "' ditambahkan ke keranjang.", 'success');
+                },
+
+                incrementCart(idx) {
+                    const item = this.cart[idx];
+                    const p = this.products.find(prod => prod.id === item.id);
+                    const stock = p ? p.stock : item.maxStock;
+                    if (item.quantity + 1 > stock) {
+                        this.showAlert("Jumlah melebihi stok tersedia (" + stock + " item).", 'error');
+                        return;
+                    }
+                    item.quantity++;
+                },
+
+                decrementCart(idx) {
+                    if (this.cart[idx].quantity > 1) {
+                        this.cart[idx].quantity--;
+                    } else {
+                        this.removeFromCart(idx);
+                    }
+                },
+
+                removeFromCart(idx) {
+                    this.cart.splice(idx, 1);
+                },
+
+                clearCart() {
+                    this.cart = [];
+                    this.paidAmount = '';
+                },
+
+                processPayment() {
+                    const subtotal = this.cartSubtotal;
+                    if (this.cart.length === 0) return;
+                    if (this.paidAmount < subtotal) {
+                        this.showAlert("Uang tunai kurang " + this.formatRupiah(subtotal - this.paidAmount), 'error');
+                        return;
+                    }
+
+                    // Validate stock again
+                    for (const item of this.cart) {
+                        const p = this.products.find(prod => prod.id === item.id);
+                        if (!p || p.stock < item.quantity) {
+                            this.showAlert("Stok untuk " + item.name + " tidak mencukupi!", 'error');
+                            return;
+                        }
+                    }
+
+                    const change = this.paidAmount - subtotal;
+                    const dateNow = new Date();
+                    const invoiceNo = 'INV-' + dateNow.getFullYear() +
+                                      String(dateNow.getMonth() + 1).padStart(2, '0') +
+                                      String(dateNow.getDate()).padStart(2, '0') + '-' +
+                                      String(this.transactions.length + 1).padStart(4, '0');
+
+                    const transaction = {
+                        id: Date.now(),
+                        invoice_no: invoiceNo,
+                        transaction_date: dateNow.toISOString(),
+                        subtotal: subtotal,
+                        paid_amount: this.paidAmount,
+                        change_amount: change,
+                        items: this.cart.map(c => ({
+                            product_id: c.id,
+                            product_name: c.name,
+                            price: c.price,
+                            quantity: c.quantity,
+                            line_total: c.price * c.quantity
+                        }))
+                    };
+
+                    // Deduct stock
+                    this.cart.forEach(c => {
+                        const p = this.products.find(prod => prod.id === c.id);
+                        if (p) {
+                            p.stock -= c.quantity;
+                        }
+                    });
+                    this.saveProductsToStorage();
+
+                    // Save transaction
+                    this.transactions.unshift(transaction);
+                    this.saveTransactionsToStorage();
+
+                    this.activeReceipt = transaction;
+                    this.cart = [];
+                    this.paidAmount = '';
+                    this.showAlert("Transaksi berhasil disimpan!", 'success');
+                },
+
+                showReceipt(txn) {
+                    this.activeReceipt = txn;
+                },
+
+                openProductModal(prod = null) {
+                    if (prod) {
+                        this.editingProductId = prod.id;
+                        this.productForm = { code: prod.code, name: prod.name, price: prod.price, stock: prod.stock };
+                    } else {
+                        this.editingProductId = null;
+                        this.productForm = { code: 'BRG-' + String(this.products.length + 1).padStart(3, '0'), name: '', price: 0, stock: 0 };
+                    }
+                    this.showProductModal = true;
+                },
+
+                saveProduct() {
+                    if (!this.productForm.code || !this.productForm.name) {
+                        this.showAlert('Kode dan nama produk wajib diisi!', 'error');
+                        return;
+                    }
+                    if (this.productForm.price < 0 || this.productForm.stock < 0) {
+                        this.showAlert('Harga dan stok tidak boleh bernilai negatif!', 'error');
+                        return;
+                    }
+
+                    // Check duplicate code
+                    const dup = this.products.find(p => p.code === this.productForm.code && p.id !== this.editingProductId);
+                    if (dup) {
+                        this.showAlert('Kode produk sudah digunakan!', 'error');
+                        return;
+                    }
+
+                    if (this.editingProductId) {
+                        const p = this.products.find(prod => prod.id === this.editingProductId);
+                        if (p) {
+                            Object.assign(p, this.productForm);
+                            this.showAlert('Produk berhasil diperbarui.', 'success');
+                        }
+                    } else {
+                        this.products.push({
+                            id: Date.now(),
+                            ...this.productForm
+                        });
+                        this.showAlert('Produk baru berhasil ditambahkan.', 'success');
+                    }
+
+                    this.saveProductsToStorage();
+                    this.showProductModal = false;
+                },
+
+                deleteProduct(id) {
+                    if (confirm('Yakin ingin menghapus produk ini? (Riwayat penjualan tetap tersimpan)')) {
+                        this.products = this.products.filter(p => p.id !== id);
+                        this.saveProductsToStorage();
+                        this.showAlert('Produk berhasil dihapus.', 'success');
+                    }
+                },
+
+                deleteTransaction(id) {
+                    if (confirm('Yakin ingin menghapus riwayat transaksi ini?')) {
+                        this.transactions = this.transactions.filter(t => t.id !== id);
+                        this.saveTransactionsToStorage();
+                        this.showAlert('Riwayat transaksi berhasil dihapus.', 'success');
+                    }
+                },
+
+                showAlert(msg, type = 'success') {
+                    this.alertMessage = msg;
+                    this.alertType = type;
+                    setTimeout(() => {
+                        if (this.alertMessage === msg) this.alertMessage = '';
+                    }, 4000);
+                }
+            };
+        }
+    </script>
+</body>
+</html>
+
